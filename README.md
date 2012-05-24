@@ -1,4 +1,4 @@
-Learning-Scala
+Learning Scala
 ==============
 
 My own tests and exercises.
