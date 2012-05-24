@@ -1,3 +1,4 @@
+// Arrow left/right to move snake!
 import java.awt.Color
 import java.awt.event.{ActionEvent, ActionListener}
 import scala.Array.canBuildFrom
@@ -7,34 +8,38 @@ import javax.swing.Timer
 
 object s01_Snake extends SimpleSwingApplication {
 	val S = 11
+	// ground has SxS cells
 	val W = 10
-	val S2 = S * S
-	val vs = S * W
-	var d = 0
+	// cell has WxW pixels
 	val D = Array(1, 0, 0, -1, -1, 0, 0, 1)
+	// move types: right, up, left, down
+	var d = 0
+	// actual move type
 	var s = Array((S >> 1, S >> 1))
+	// snake body FILO
 	val rnd = new java.util.Random()
-	var f = food
+	// I can't remember...
+	var f = food // actual food pos
 
+	// return a free cell (to put food)
 	def food = {
-		val l = 0.to(S2 - 1).map(p => (p % S, p / S)).filterNot(s.contains)
+		val l = 0.to(S * S - 1).map(p => (p % S, p / S)).filterNot(s.contains)
 		l(rnd.nextInt(l.length))
 	}
 
 	def top = new MainFrame {
 		title = "Snake!"
 		contents = new Panel {
+			// mandatory, if not, not key/mouse events
 			focusable = true
 			background = Color.white
-			preferredSize = new Dimension(vs, vs)
+			preferredSize = new Dimension(S * W, S * W)
 
 			override def paint(g: Graphics2D) {
 				g.setBackground(Color.white)
-				g.clearRect(0, 0, vs, vs)
+				g.clearRect(0, 0, S * W, S * W)
 				g.setColor(Color.green)
-				s.foreach {
-					case (x, y) => g.fillRect(x * W, y * W, W, W)
-				}
+				s.foreach { case (x, y) => g.fillRect(x * W, y * W, W, W) }
 				g.setColor(Color.red)
 				g.fillRect(f._1 * W, f._2 * W, W, W)
 				if(!t.isRunning) {
@@ -42,7 +47,6 @@ object s01_Snake extends SimpleSwingApplication {
 					g.drawString("Ouch!", 10, 10)
 				}
 			}
-
 			listenTo(keys)
 			reactions += {
 				case KeyPressed(_, Key.Left, _, _) => d = (d + 1) % 4
