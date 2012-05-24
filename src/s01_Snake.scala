@@ -17,19 +17,13 @@ object s01_Snake extends SimpleSwingApplication {
 	var f = food // actual food pos
 
 	// return a free cell (to put food)
-	def food = {
-		val l = 0.to(S * S - 1).map(p => (p % S, p / S)).filterNot(s.contains)
-		l(rnd.nextInt(l.length))
-	}
+	def food = (0 to S * S - 1 map (p => (p % S, p / S)) filterNot s.contains)(rnd nextInt S * S)
 
 	def top = new MainFrame {
 		title = "Snake!"
 		contents = new Panel {
-			// mandatory, if not, not key/mouse events
-			focusable = true
-			background = Color.white
+			focusable = true // mandatory, if not, not key/mouse events
 			preferredSize = new Dimension(S * W, S * W)
-
 			override def paint(g: Graphics2D) {
 				g.setBackground(Color.white)
 				g.clearRect(0, 0, S * W, S * W)
@@ -42,12 +36,9 @@ object s01_Snake extends SimpleSwingApplication {
 					g.drawString("Ouch!", 10, 10)
 				}
 			}
-
 			listenTo(keys)
-			reactions += {
-				case KeyPressed(_, Key.Left, _, _) => d = (d + 1) % 4
-				case KeyPressed(_, Key.Right, _, _) => d = (d + 3) % 4
-			}
+			reactions += {case KeyPressed(_, Key.Left, _, _) => d = (d + 1) % 4}
+			reactions += {case KeyPressed(_, Key.Right, _, _) => d = (d + 3) % 4}
 		}
 		val t: Timer = new Timer(250, new ActionListener() {
 			def actionPerformed(e: ActionEvent) {
