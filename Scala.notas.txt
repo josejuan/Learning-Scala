@@ -1,0 +1,759 @@
+Source: http://www.scala-lang.org/docu/files/ScalaReference.pdf
+Referencias:
+	Java formalizado
+		http://mit.ocw.universia.net/6.170/6.170/f01/pdf/lecture-15.pdf
+--------------------
+
+General
+==================
+
+	Apóstrofe delimita identificador. Por ejemplo, para poder usar palabras reservadas (el motivo es que puede
+	 hacer falta llamar a un método de un objeto que tenga ese nombre; eg. "Thread.'yield'()").
+
+	Fin de sentencia ';' o fin de línea, pero cuidado, existen reglas detalladas que llevan a casos en que un
+	 doble salto de línea es ilegal pero uno sólo no.
+
+	Por ejemplo, los atributos se indican con arrobas, pero debe haber "algo" en la línea siguiente:
+
+		@serializable
+		protected class Data { ... }
+
+	Lo que sigue da error
+
+		@serializable
+
+		protected class Data { ... }
+
+	Resultado última sentencia, es valor de retorno.
+
+	Literales:
+
+		012	octal 32 bits
+		012L	octal 64 bits
+		012l	octal 64 bits
+		123	decimal 32 bits
+		123L	decimal 64 bits
+		0xaf	hexadecimal 32 bits
+		0xAFL	hexadecimal 64 bits
+
+		(literales enteros son ajustados al rango de "Byte", "Char" y "Short" automáticamente)
+
+		.3f	número flotante 32 bits
+		3e-1d	número flotante 64 bits
+
+		true	booleano
+		false	booleano
+
+		'a'	carácter
+		'\u0041'	carácter
+		'\t'	carácter
+
+		"cade\nna"	string
+
+		"""cade
+		na"""		string
+
+	Otros:
+
+		'x	símbolo literal, es sinónimo de: scala.Symbol("x")
+
+		// comentario
+
+		/* comen
+		tario */
+
+	XML mode:
+
+		un espacio en blanco, apertura de paréntesis o llaves, seguido de "menor que",
+		seguido de un nombre o cierre de esclamación o interrogación, activa el modo XML.
+
+		val b = <book>
+				<title>The Scala Language Specification</title>
+				<version>{scalaBook.version}</version>
+				<authors>{scalaBook.authors.mkList("", ", ", "")}</authors>
+			</book>
+Import
+==============
+
+	import PackageName._		todos los elementos
+	import PackageName.SymbolName	sólo un símbolo
+
+	import a, b, c, ...		se pueden poner en la misma cláusula import varias importaciones
+
+	import a.b.c._			importa todo
+	import a.b.c.id			importa id
+	import a.b.c.{ id1 => ud1, id2, id3 => _, _ }	múltiples importaciones sobre el mismo espacio "a.b.c"
+
+	"=>" da un alias a un elemento importado
+	"_" usado como alias, hace que no se pueda acceder al elemento en cuestión.
+
+	Las cláusulas de importación pueden estar a nivel de bloque y serán visibles en ese scope.
+
+	Curiosamente, un objeto tiene su propio espacio de nombres (claro) que puede ser importado (cáspita):
+
+		object Z {
+			def z = 0, one = 1
+			def add(x: Int, y: Int): Int = x + y
+		}
+
+		... entonces se puede hacer ...
+
+		{
+			import M.{one, z => zero, _}
+			add(zero, one)
+		}
+
+		... que viene a ser lo mismo que ...
+
+		M.add(M.z, M.one)
+
+Clases y objetos
+====================================
+
+	Las posibilidades son:
+
+		class ClasDefinition
+		case class ClassDefinition
+		object ObjectDefinition
+		case object ObjectDefinition
+		trait TraitDefinition
+
+	Tanto las clases como objetos como traits son procesados en el sentido de plantillas y se van aplicando
+	 una detrás de otra (con "with").
+
+	La forma habitual es declarar
+
+		sc with mt1 with mt2 with ... with mtN { stats }
+
+	donde 'sc' suele ser una clase con constructor y lo demás traits, luego en stats está la construcción y
+	 definiciones adicionales.
+
+	Se podría definir sólo con traits
+
+		mt1 with mt2 with ... with mtN { stats }
+
+	lo que tendría un constructor sin parámetros.
+
+	A todas las declaraciones se les añade implícitamente el mixin "scala.ScalaObject" al final.
+
+	Por ejemplo, dado:
+
+		class Base extends Object {}
+		trait Mixin extends Base {}
+		object O extends Mixin {}
+
+	el objeto O se expande como
+
+		object O extends Base with Mixin {}
+
+	La forma en la que se evalúan las plantillas es:
+
+		* si se trata de un trait, símplemente se evalúa "stats".
+
+		* para clases y objetos:
+
+			- se evalúa el constructor "sc"
+
+			- se hacen evaluaciones mixin en todo el árbol jerárquico
+
+			- se evalúa "stats".
+
+	Se puede alterar el ciclo de inicialización sobrecargando "delayedInit", pero esto no lo tengo muy claro
+	 como va.
+
+	Además, puede haber una "inicialización temprana" (o "early definitions") que es un bloque que se evalúa
+	 antes de que
+	el constructor del supertipo sea llamado:
+
+		{
+			val p1: T1 = e1
+			...
+			val pM: Tm = eM
+		} with sc with mt1 with mt2 ... with mtN { stats }
+
+	el cuerpo de early no pertenece al objeto o clase así, cualquier referencia a "this" en los "e#" lo hace
+	 sobre un "this" de	un scope superior.
+
+	Los earlys son útiles para los traits, haciendo las veces de "constructor":
+
+		trait Greeting {
+			val name: String
+			val msg: "How are you, " + name
+		}
+		class C extends {
+			val name = "Bob"
+		} with Greeting {
+			println(msg)
+		}
+
+Modificadores
+================================
+
+		Modifier			:= LocalModifier | AccessModifier | 'override'
+
+			LocalModifier		:= 'abstract' | 'final' | 'sealed' | 'implicit' | 'lazy'
+
+			AccessModifier		:= ('private' | 'protected') [AccessQualifier]
+
+				AccessQualifier	:= '[' (id | 'this') ']'
+
+	+ El orden al indicarlos no es importante.
+
+	+ "private"
+		- sólo son accesibles dentro de la plantilla en que se definen.
+		- no pueden sobrecargar un miembro de una clase base.
+		- no serán heredados.
+		- el cualificador limita el acceso aún más, bien al tipo indicado en id o a "this". Ojo que "this"
+		 implica que únicamente la instancia actual puede acceder al privado de la instancia actual.
+		- las clases u objetos privados no pueden ser virtuales y no pueden tener elementos privados ni
+		 sobrecargados.
+
+	+ "protected"
+		- accede la plantilla que define
+		- todas las bases
+		- el módulo en el que está la clase (vamos, como un "internal" de C#)
+		- también puede ser cualificado, pero el acceso cualificado se añade al indicado antes.
+		- el cualificador this parece que funciona como un private.
+
+	+ "override"
+		- sobrecarga un elemento preexistente
+		- únicamente en "traits" se puede usar junto con "abstract" además en miembros valor (no se muy
+		 bien que hace)
+
+	+ "abstract"
+		- es usado en definiciones de clase
+		- es redundante para traits
+
+	+ "final"
+		- indica que el elemento no puede ser sobrecargado
+		- si es una clase, indica que no puede ser heredada.
+		- es redundante para los objetos.
+		- normalmente, elementos "final" de una clase "final" no hace falta esplicitarlos, excepto para
+		 constantes.
+		- no puede ser combinado con una lista "sealed".
+
+	+ "sealed"
+		- se aplica a una clase
+		- indica que no puede ser directamente heredada, sólo las clases que están en el mismo ¡¿archivo?!
+		 puede heredarla
+
+		Una forma de evitar que quien necesita acceder a una clase pueda instanciar objetos de ella es
+
+			object m {
+				abstract sealed class C(x: Int) {
+					def nextC = new C(x + 1) {}
+				}
+				val empty = new C(0) {}
+			}
+
+		"empty" se puede definir así, porque a la vez se crea el objeto y se hereda (con "{}", si se quitan
+		 falla por abstracción)
+
+
+	+ "lazy"
+		- se aplica a elementos
+		- indica que se evalúa perezosamente
+
+Definición de clases
+==================================
+
+	TmplDef			::= 'class' ClassDef
+	ClassDef		::= id [TypeParamClause] {Annotation} [AccessModifier] ClassParamClauses ClassTemplateOpt
+	ClassParamClauses	::= {ClassParamClause} [[nl] ‘(’ implicit ClassParams ‘)’]
+	ClassParamClause	::= [nl] ‘(’ [ClassParams] ’)’
+	ClassParams		::= ClassParam {‘,’ ClassParam}
+	ClassParam		::= {Annotation} [{Modifier} (‘val’ | ‘var’)] id [‘:’ ParamType] [‘=’ Expr]
+	ClassTemplateOpt	::= ‘extends’ ClassTemplate | [[‘extends’] TemplateBody]
+
+	Vendría a ser algo como
+
+		class c[tps] as m (ps1) ... (psN) extends t
+
+	donde
+
+		c, es el nombre de la clase
+		tps, opcionalmente se definen los alias para los tipos (caso de ser clase polimórfica)
+		as, opcionalmente anotaciones estilo @abracadabra
+		m, opcionalmente son los modificadores de acceso como private, sealed, ...
+		ps#, opcionalmente son la lista de argumentos para el contructor
+
+	Notas:
+		- si un parámetro del constructor tiene antepuesto "var" o "val" entonces se crea automáticamente
+			un getter. Puede tener modificadores.
+		- si es "var" también tiene un setter. Puede tener modificadores.
+
+		Ejemplo:
+
+			class C(var nombre: String, private val apellido: String) {
+				def print = println("%s %s".format(this.nombre, this.apellido))
+			}
+
+	Además del constructor primario, se puede definir un constructor "al uso". Estilo
+
+		def this(args) = ...
+
+Case Clases
+============================
+
+	TmplDef ::= ‘case’ ‘class’ ClassDef
+
+	En una "case class" el primer grupo de argumentos es tratado de forma especial:
+
+		- el valor puede extraerse como un constructor por patrón.
+		- todos los argumentos (del primer grupo) son tratados por defecto como "val".
+
+	También genera extractores con la siguiente forma.
+
+		object c {
+			def apply[tps](ps1 ). . .(psn): c[tps] = new c[Ts](xs1 ). . .(xsn)
+			def unapply[tps](x: c[tps]) =
+				if (x eq null) scala.None
+				else scala.Some(x.xs11, . . . , x.xs1k)
+			def copy[tps](ps1 ). . .(psn): c[tps] = new c[Ts](xs1 ). . .(xsn)
+		}
+
+	"apply" es omitida si la clase es abstracta.
+
+	Si no hay parámetros de clase, entonces "unapply" devuelve un booleano (indicando si hay instancia)
+	 en lugar de un Option type.
+
+	Si el primer argumento del primer bloque es repetitivo (con "*") entonces en lugar de "unapply" se
+	 llama "unapplySeq".
+
+	También se crea un método de copia "copy" a no ser que se defina o se herede otro.
+
+	También se sobrecargan todos los métodos de la clase base implítica "scala.AnyRef" (a no ser que se
+	 definan o hereden):
+
+		+ "equals", son iguales si tienen los mismos argumentos de constructor.
+		+ "hashCode", eso
+		+ "toString", el nombre de la clase y sus elementos.
+
+	Las "case class" no requieren de la clave "new" para crear nuevos objetos (eg. Perro("marrón", 35))
+
+	Muy útil para pattern matching:
+
+		class Figura
+		case class Circulo(radio: Int) extends Figura
+		case class Cuadrado(lado: Int) extends Figura
+		case class Rectangulo(base: Int, altura: Int) extends Figura
+		case class Triangulo(base: Int, altura: Int) extends Figura
+
+		instancia match {
+			case Circulo(r) =>
+				println("Circulo de radio %d" format r)
+			case Rectangulo(b, a) =>
+				println("Rectángulo de base %d y altura %d" format (b, a))
+			...
+			case _ =>
+				println("¿Que figura es?")
+
+	Ejemplo:
+
+		class Expr
+		case class Var (x: String) extends Expr
+		case class Apply (f: Expr, e: Expr) extends Expr
+		case class Lambda(x: String, e: Expr) extends Expr
+
+		type Env = String => Value
+		case class Value(e: Expr, env: Env)
+
+		def eval(e: Expr, env: Env): Value = e match {
+			case Var (x) =>
+				env(x)
+			case Apply(f, g) =>
+				val Value(Lambda (x, e1), env1) = eval(f, env)
+				val v = eval(g, env)
+				eval (e1, (y => if (y == x) v else env1(y)))
+			case Lambda(_, _) =>
+				Value(e, env)
+		}
+
+Traits
+========================
+
+	---reading 69
+
+	TmplDef ::= ‘trait’ TraitDef
+	TraitDef ::= id [TypeParamClause] TraitTemplateOpt
+	TraitTemplateOpt ::= ‘extends’ TraitTemplate | [[‘extends’] TemplateBody]
+
+	Un trait añade aspectos a objetos (eg. Comparable, Enumerable, Sumable, ...).
+
+	El siguiente trait establece un tipo genérico de comportamiento
+
+		trait Comparable[T <: Comparable[T]] { self: T =>
+			def < (that: T): Boolean
+			def <=(that: T): Boolean = this < that || this == that
+			def > (that: T): Boolean = that < this
+			def >=(that: T): Boolean = that <= this
+		}
+
+	Un ejemplo de un trait que refina el comportamiento de una clase
+
+        Una clase abstracta define un tipo de objetos
+
+            abstract class Table[A, B](defaultValue: B) {
+                def get(key: A): Option[B]
+                def set(key: A, value: B)
+                def apply(key: A) = get(key) match {
+                    case Some(value) => value
+                    case None => defaultValue
+                }
+            }
+
+        que es especializada en algún caso
+
+            class ListTable[A, B](defaultValue: B) extends Table[A, B](defaultValue) {
+                private var elems: List[(A, B)]
+                def get(key: A) = elems.find(._1.==(key)).map(._2)
+                def set(key: A, value: B) = {elems = (key, value) :: elems}
+            }
+
+        y de forma solapada, el siguiente trait añade una funcionalidad que puede ser usada o no
+
+            trait SynchronizedTable[A, B] extends Table[A, B] {
+                abstract override def get(key: A): B =
+                    synchronized {super.get(key)}
+                abstract override def set(key: A, value: B) =
+                    synchronized {super.set(A, B)}
+            }
+
+        así, una forma de crear una tabla sincronizada sería
+
+            object myTable extends ListTable[String, Int](0) with SynchronizedTable
+
+Invocación de construcción
+==================================
+
+	La forma general es
+
+		x.c[targs](args1)...(argsN)
+
+	donde
+
+		x, es el id estable (el namespace, un alias, nada, ...)
+		c, es el nombre del tipo del que se crea la instancia
+		targs, los argumentos de tipo
+		args#, los argumentos al constructor (si no hay argumentos, se pueden omitir los paréntesis)
+
+linearization
+===========================
+
+	Hace referencia a la lista de tipos que finalmente son ancestros de uno declarado.
+
+	Básicamente la forma en la que se apilan.
+
+	Detalles en pág. 57
+
+Class members
+=========================
+
+	M y M' encajan como definición de miembro si tienen el mismo nombre y ocurre alguno de los siguientes:
+
+	- ni M ni M' son definiciones de método.
+	- tanto M como M' definen un método monomórfico con los mismos argumentos (y tipos claro).
+	- M no tiene parámetros y M' admite lista vacía, o al revés.
+	- M y M' son polimórficos y encajan en sus represetnaciones (la ref no aclara si alguna o en todas).
+
+	En el orden de aplicación:
+
+	- un miembro concreto siempre manda sobre uno abstracto
+	- si los dos son concretos o los dos son abstractos, primero el que esté antes en la linearización
+
+	Básicamente, mandan los que están más a la derecha de los "with".
+
+		trait A {def f: Int = 4}
+		trait B extends A {override def f: Int = 5}	// el override es obligatorio
+		trait C extends A {override def f: Int = 6}     // el override es obligatorio
+		object D extends B with C {def h: Int = 0}	// aquí manda lo que hay en C, es decir, 6
+		object E extends C with B {def h: Int = 0}	// aquí manda lo que hay en B, es decir, 5
+
+	En concreto, si M encaja con el método de un ancestro M', se dice que M sobrecarga M', aplicandose
+	 las siguientes restricciones:
+
+		- M' no puede ser "final"
+		- M no puede ser "private"
+		- si M es "private", entonces M' debe ser "private".
+		- si M es "protected", entonces M' debe ser "protected".
+		- si M' no es "abstract", entonces M debe tener "override" (de ahí el ejemplo anterior).
+		- si M' está incompleto (ni idea que es eso, lo explican luego), entonces M debe ser "abstract override".
+		- si M y M' son concretos, entonces o los dos son "lazy" o no lo son.
+
+	Notas:
+		- manda la lista de parámetros vacía a la no lista de parámetros (en la sobrecarga).
+		- no se puede sobrecargar si no encajan los intervalos de tipos volátiles
+		- al sobrecargar, se heredan los valores por defecto, aunque se pueden reasignar otro nuevos
+
+Clases
+================
+
+	class TimeOfDayVar {
+
+		private var h: Int = 0
+		private var m: Int = 0
+		private var s: Int = 0
+
+		def hours = h
+		def hours_= (h: Int) =	if (0 <= h && h < 24) this.h  = h
+					else throw new DateError()
+
+		...
+
+	Propiedades
+	===================
+
+		La propiedad "x" se define como:
+
+			...
+			def x ... // getter
+			def x_= ... // setter
+
+Type alias
+=================
+
+	Legal:
+
+		type IntList = List[Int]
+		type T <: Comparable[T]
+		type Two[A] = Tuple2[A, A]
+		type MyCollection[+X] <: Iterable[X]
+
+	Ilegal:
+
+		type Abs = Comparable[Abs]	// recursivo
+
+		type S <: T
+		type T <: S			// acotado por sí mismo
+
+		type T >: Comparable[T.That]	// T es un tipo, no un valor
+
+
+
+Herencia
+=================
+
+
+	Acceso a ancestros:
+
+		o.super
+		o.super[SuperType]
+
+Tipos parametrizados
+===========================
+
+	Se puede forzar que un tipo tenga un comportamiento, por ejemplo
+
+		class Tree[A <: Comparable[A], B, M[B]] { ... }
+
+	Que podría instanciarse como
+
+		Tree[Int, String, List[String]]
+
+Tipos compuestos
+=============================
+
+	Sean los tipos
+
+		case class Bird(val name: String) extends Object {
+			def fly(height: Int) = ...
+			...
+		}
+
+		case class Plane(val callSign: String) extends Object {
+			def fly(height: Int) = ...
+			...
+		}
+
+		def takeOff(
+			runway: Int,
+			r: {val callSign: String; def fly(height: Int)}
+		) = {
+			tower.print(r.callSign + " request take-off on runway " + runway)
+			tower.print(r.callSign + " is clear for take-off")
+			r.fly(1000)
+		}
+
+		val bird = new Bird("Parrot") {val callSign = name}
+		val plane = new Plane("TZ-987")
+		takeOff(42, bird)
+		takeOff(89, plane)
+
+Tipos "existenciales"?
+===============================
+
+	Se puede forzar que un parámetro cumpla un tipo, por ejemplo
+
+		def myFunction(x: T forSome {type T <: A}) = ...
+
+	que indica que 'x' debe ser algún tipo T tal que hereda de A.
+
+	El ejemplo puede escribirse (creo) como:
+
+		def myFunction(x: _ <: A) = ...
+
+	El ejemplo anterior, fuerza que el tipo sea, como mínimo de la especialización A,
+	pero puede forzarse a que, no esté más especializado que B (B es más especializado
+	que A), por ejemplo
+
+		def myFunction(x: B >: T <: A) = ...
+
+Anotaciones de varianza
+=================================
+
+	+ indica covarianza
+	- indica contravarianza
+	si no se indica, hay invarianza en el tipo
+
+	Así,
+
+		+A	indica que el tipo instanciado debe ser el propio tipo A o bien un subtipo de A
+		-A	indica que el tipo instanciado debe ser el propio tipo A o bien un supertipo de A
+		A	indica que el tipo instanciado debe ser el propio tipo A
+
+	Ejemplos:
+
+			abstract class Sequence[+A] {
+				def append(x: Sequence[A]): Sequence[A]
+					// **** error: illegal variance:
+					// ‘A’ occurs in contravariant position.
+			}
+
+		Falla porque "append" fuerza al supertipo A
+
+		Para corregirlo:
+
+			abstract class Sequence[+A] {
+				def append[B >: A](x: Sequence[B]): Sequence[B]
+			}
+
+		Funciona porque "append" admite cualquier subtipo de A (que corresponde con +A).
+
+		Un ejemplo de contravarianza:
+
+			abstract class OutputChannel[-A]	{
+				def write(x: A): Unit
+			}
+
+Declaración de función
+=====================================
+
+	Dcl			::= ‘def’ FunDcl
+	FunDcl			::= FunSig ‘:’ Type
+	Def			::= ‘def’ FunDef
+	FunDef			::= FunSig [‘:’ Type] ‘=’ Expr
+	FunSig			::= id [FunTypeParamClause] ParamClauses
+	FunTypeParamClause	::= ‘[’ TypeParam {‘,’ TypeParam} ‘]’
+	ParamClauses		::= {ParamClause} [[nl] ‘(’ ‘implicit’ Params ‘)’]
+	ParamClause		::= [nl] ‘(’ [Params] ‘)’}
+	Params			::= Param {‘,’ Param}
+	Param			::= {Annotation} id [‘:’ ParamType] [‘=’ Expr]
+	ParamType		::= Type
+				|   ‘=>’ Type
+				|   Type ‘*’
+
+	Notas:
+
+		En la declaración es obligatorio el tipo de retorno.
+		El tipo de retorno puede ser inferido si la función no es recursiva.
+		El alcance de los alias de "FunTypeParamClause" van desde los parámetros, retorno, hasta el cuerpo.
+
+		"=>" hace que el parámetro sea transferido "tal cual" desde su definición en la lista de parámetros
+		 hasta donde se use en el cuerpo de la función receptora. Es algo como un argumento lazy mezclado
+		  con una función (pasada como primer orden).
+
+			Puede haber confusión según el tipo (ej. si es Unit, dará igual lo que devuelva el "cuerpo del
+			 parámetro" pero si es String se usa, etc...).
+
+
+				def func1(a: Unit) = for(i <- 0 until 9) println(a)
+
+				def func2(a: String) = for(i <- 0 until 9) println(a)
+
+			en el caso
+
+				var i = 0
+				func1({
+					i = i + 1
+					println(i)
+					"i = %d".format(i)
+				})
+
+			sólo imprime los "i" y luego vacío "()" porque no usa la cadena formateada.
+
+			mientras que
+
+				var i = 0
+				func2({
+					i = i + 1
+					println(i)
+					"i = %d".format(i)
+				})
+
+			imprime los "i" y usa la respuesta (es decir los "i = #") para imprimir.
+
+		"*" hace que sea una lista de parámetros, por ejemplo
+
+				def suma(x: Int *): Int
+
+			permite llamar como
+
+				suma(1, 2, 3, 4, ..., 50)
+
+			en el cuerpo, realmente, 'x' es wrappeado a un array
+
+				def suma(x: Int *): Int = x.sum
+
+			pero también permite que se haga match con otras estructuras, por ejemplo
+
+				val xs = List(1, 2, 3)
+				suma(xs)		// ¡directamente falla!
+				suma(xs: _*)		// desenrolla la lista a una tupla que encaja con la firma del método
+
+		"()()" los grupos de argumentos sirven precisamente para disambiguar las listas variables de
+		 argumentos, por ejemplo
+
+				def suma(a: Int *)(b: Int *): Int = ...
+
+			si se realiza una llamada
+
+				suma(1, 2, 3, 4, 5)
+
+			¿qué números pertenecen a 'a' y cuales a 'b'?, por eso, se realizaría la llamada como
+
+				suma(1, 2, 3)(4, 5)
+
+	Ejemplos definición:
+
+		def Suma[+A, +B]
+			(a: A, b: B, c = 4)
+			(m: String, n: => String, ñ: String *)
+			(k: Int, @annotation b: B)
+			(implicit u: A, v: B): Int = {		// "implicit" sólo permitido en el último grupo
+
+			...
+
+		}
+
+
+
+
+Constructores de tipos
+=====================================
+
+	trait Iterable[+X] {
+		def flatMap[newType[+X] <: Iterable[X], S](f: X => newType[S]): newType[S]
+	}
+
+Tuplas
+=================================
+
+	Dada una tupla (T1, T2, T3, ...) se puede acceder al elemento n-ésimo mediante _n
+
+	Ejemplo:
+
+		val u = (3.1415d, "Hola")
+		u._1	// es Pi
+		u._2	// es el saludo
+
+
