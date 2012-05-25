@@ -1,6 +1,23 @@
 object s02_CaseClass {
 
-	class Node[T](val value: T) {
+	class Node[T <% Ordered[T]](val value: T) {
+
+		def <~(n: Node[T]): Node[T] = {
+			val b =
+				if(n.value < value)
+					this match {
+						case Branch(_, null, r) => (n, r)
+						case Branch(_, l, r) => (l <~ n, r)
+						case _ => (n, null)
+					}
+				else
+					this match {
+						case Branch(_, l, null) => (l, n)
+						case Branch(_, l, r) => (l, r <~ n)
+						case _ => (null, n)
+					}
+			Branch[T](value, b._1, b._2)
+		}
 
 		private def print(value: T): String = "%s, " format value.toString
 
@@ -14,42 +31,14 @@ object s02_CaseClass {
 
 	}
 
-	case class Branch[T](x: T, left: Node[T], right: Node[T]) extends Node[T](x)
+	case class Branch[T <% Ordered[T]](x: T, left: Node[T], right: Node[T]) extends Node[T](x)
 
-	case class Leaf[T](x: T) extends Node[T](x)
+	case class Leaf[T <% Ordered[T]](x: T) extends Node[T](x)
 
-	def add[T <% Ordered[T]](tree: Node[T], node: Node[T]): Node[T] = tree match {
-		case Branch(value, left, right) =>
-			if(node.value < value)
-				Branch[T](value, add(left, node), right)
-			else
-				Branch[T](value, left, add(right, node))
-		case Leaf(value) =>
-			if(node.value < value)
-				Branch[T](value, node, null)
-			else
-				Branch[T](value, null, node)
-		case _ =>
-			node
-	}
+	implicit def stringWrapper(s: String) = Leaf[String](s)
 
 	def main(args: Array[String]) {
-		val tree =
-			add(
-				add(
-					add(
-						add(
-							Leaf[String]("Peter"),
-							Leaf[String]("John")
-						),
-						Leaf[String]("Austin")
-					),
-					Leaf[String]("Iniqua")
-				),
-				Leaf[String]("Tairon")
-			)
-
-		println(tree)
+		println("Pablo" <~ "Tyrone" <~ "Uniqua" <~ "Tasha" <~ "Austin")
 	}
 
 }
