@@ -19,12 +19,12 @@ object s02_CaseClass {
 			Branch[T](value, b._1, b._2)
 		}
 
-		private def print(value: T): String = "%s, " format value.toString
+		private def print(v: T): String = "%s, " format v.toString
 
 		private def print(n: Node[T]): String = n match {
 			case null => ""
-			case Branch(value, left, right) => "%s%s%s" format(print(left), print(value), print(right))
-			case Leaf(value) => print(value)
+			case Branch(v, l, r) => "%s%s%s" format(print(l), print(v), print(r))
+			case Leaf(v) => print(v)
 		}
 
 		override def toString: String = print(this)
