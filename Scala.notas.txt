@@ -80,7 +80,7 @@ Import
 
 	import a, b, c, ...		se pueden poner en la misma cláusula import varias importaciones
 
-	import a.b.c._			importa todo
+	import a.b.c._			importa t odo
 	import a.b.c.id			importa id
 	import a.b.c.{ id1 => ud1, id2, id3 => _, _ }	múltiples importaciones sobre el mismo espacio "a.b.c"
 
@@ -154,7 +154,7 @@ Clases y objetos
 
 			- se evalúa el constructor "sc"
 
-			- se hacen evaluaciones mixin en todo el árbol jerárquico
+			- se hacen evaluaciones mixin en t odo el árbol jerárquico
 
 			- se evalúa "stats".
 
