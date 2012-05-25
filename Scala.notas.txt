@@ -372,8 +372,6 @@ Case Clases
 Traits
 ========================
 
-	---reading 69
-
 	TmplDef ::= ‘trait’ TraitDef
 	TraitDef ::= id [TypeParamClause] TraitTemplateOpt
 	TraitTemplateOpt ::= ‘extends’ TraitTemplate | [[‘extends’] TemplateBody]
@@ -422,6 +420,11 @@ Traits
         así, una forma de crear una tabla sincronizada sería
 
             object myTable extends ListTable[String, Int](0) with SynchronizedTable
+
+Definición de objetos
+========================================
+
+    -- reading 71
 
 Invocación de construcción
 ==================================
