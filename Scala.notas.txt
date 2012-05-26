@@ -424,7 +424,38 @@ Traits
 Definición de objetos
 ========================================
 
-    -- reading 71
+    Definen un nuevo objeto de una nueva clase (vamos, un singleton).
+
+        object m extends t
+
+    donde
+
+        m, es el nombre del objeto.
+        t, es la plantilla generadora.
+
+    Una forma que consigue un resultado similar es
+
+        lazy val m = new sc with mt1 with mt2 ... with mtN { this: m.type => stats }
+
+    Scala no permite miembros estáticos, pero pueden simularse así:
+
+        abstract class Point {
+            val x: Double
+            val y: Double
+            def isOrigin = (x == 0.0 && y == 0.0)
+        }
+        object Point {
+            val origin = new Point() { val x = 0.0; val y = 0.0 }
+        }
+
+    Cuando se instancie un objeto de la clase "Point", puede accederse al miembro inmutable "origin"
+    del objeto "Point". Virtualmente, es como si la clase "Point" tuviera el miembro estático "origin".
+
+Expresiones
+============================
+
+    pág 76
+
 
 Invocación de construcción
 ==================================
