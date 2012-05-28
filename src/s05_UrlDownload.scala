@@ -26,16 +26,17 @@ object s05_UrlDownload {
 		val data22 = DownloadString(url2)
 		println("%s -> %d length" format(url2, data22 length))
 	}
+
 	// why is not this function in Scala (or Java) standard API?
 	def DownloadString(url: String): String = {
 		DownloadString(new java.net.URL(url))
 	}
+
 	def DownloadString(url: java.net.URL): String = {
 		import java.io.{InputStreamReader, BufferedReader}
 		val r = new BufferedReader(new InputStreamReader(url.openStream))
 		val o = new StringBuilder
-		while(r.ready)
-			o.append(r.readLine)
+		while(r.ready) o.append(r.readLine)
 		r.close()
 		return o.toString
 	}
