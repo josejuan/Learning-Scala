@@ -511,7 +511,38 @@ Expresiones
     This and Super
     ===================
 
+        el típico, un acceso a un ancestro concreto se hace
 
+            super[T].x
+
+        útil cuando se mezclan varios traits
+
+    Function Applications
+    =============================
+
+        f(e1, ..., en)
+
+        reglas típicas, se evalúan de izq a der.
+
+        Está el caso del argumento "x: => T" cuya evaluación es perezosa (básicamente como si se pasara un lambda).
+
+        Cuando un "ei" es de tipo "ei: T *" se convierten los argumentos al tipo "scala.Seq[T]".
+
+        Una forma reducida de escribir un lambda es usando "_", por ejemplo
+
+            Math.sin _          es un lambda equivalente a           x => Math.sin(x)
+            Array.range _       es un lambda equivalente a          (x, y) => Array.range(x, y)
+
+    Tuplas
+    ================
+
+        (e1, ..., en) es una alias de "scala.Tuplen(e1, ..., en)" con n>=2
+        () es alias de "scala.Unit"
+
+    Instance Creation Expressions
+    =================================
+
+        reading 81
 
 Invocación de construcción
 ==================================

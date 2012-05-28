@@ -18,14 +18,15 @@ class Dog(name: String) extends Animal(name) with FormatName with FormatName2 {
 	def Name1: String = super[FormatName].Name
 
 	def Name2: String = super[FormatName2].Name
+
 }
 
 object s06_ThisSuper {
 	def main(args: Array[String]) {
 		val d = new Dog("Puppy")
-		println("d.Name ......... %s" format d.Name)
-		println("d.Name(true) ... %s" format d.Name(true))
-		println("d.Name1 ........ %s" format d.Name1)
-		println("d.Name2 ........ %s" format d.Name2)
+		println("d.Name ........... %s" format d.Name)
+		println("d.Name(true) ..... %s" format d.Name(true))
+		println("d.Name1 .......... %s" format d.Name1)
+		println("d.Name2 .......... %s" format d.Name2)
 	}
 }
