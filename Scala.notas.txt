@@ -454,7 +454,63 @@ Definición de objetos
 Expresiones
 ============================
 
-    pág 76
+    Expr ::= (Bindings | id | ‘_’) ‘=>’ Expr
+            | Expr1
+    Expr1 ::= ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] else Expr]
+            | ‘while’ ‘(’ Expr ‘)’ {nl} Expr
+            | ‘try’ ‘{’ Block ‘}’ [‘catch’ ‘{’ CaseClauses ‘}’]
+            [‘finally’ Expr]
+            | ‘do’ Expr [semi] ‘while’ ‘(’ Expr ’)’
+            | ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’)
+            {nl} [‘yield’] Expr
+            | ‘throw’ Expr
+            | ‘return’ [Expr]
+            | [SimpleExpr ‘.’] id ‘=’ Expr
+            | SimpleExpr1 ArgumentExprs ‘=’ Expr
+            | PostfixExpr
+            | PostfixExpr Ascription
+            | PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
+    PostfixExpr ::= InfixExpr [id [nl]]
+    InfixExpr ::= PrefixExpr
+            | InfixExpr id [nl] InfixExpr
+    PrefixExpr ::= [‘’
+            | ‘+’ | ‘~’ | ‘!’] SimpleExpr
+    SimpleExpr ::= ‘new’ (ClassTemplate | TemplateBody)
+            | BlockExpr
+            | SimpleExpr1 [‘_’]
+    SimpleExpr1 ::= Literal
+            | Path
+            | ‘_’
+            | ‘(’ [Exprs] ‘)’
+            | SimpleExpr ‘.’ id s
+            | SimpleExpr TypeArgs
+            | SimpleExpr1 ArgumentExprs
+            | XmlExpr
+    Exprs ::= Expr {‘,’ Expr}
+    BlockExpr ::= ‘{’ CaseClauses ‘}’
+            | ‘{’ Block ‘}’
+    Block ::= {BlockStat semi} [ResultExpr]
+    ResultExpr ::= Expr1
+            | (Bindings | ([‘implicit’] id | ‘_’) ‘:’ CompoundType) ‘=>’ Block
+    Ascription ::= ‘:’ InfixType
+            | ‘:’ Annotation {Annotation}
+            | ‘:’ ‘_’ ‘*’
+
+    Null
+    =============
+
+        "null" es del tipo "scala.Null" y es compatible con cualquier tipo de referencia.
+
+            ==(x) true sii son null los dos (¿pero y el tipo?)
+            !=(x) true sii son no nulos los dos (¿pero y el tipo?)
+            isInstanceOf[T] siempre devuelve false
+            asInstanceOf[T] devuelve el propio null if T encaja con "scala.AnyRef" sino lanza "NullPointerException".
+
+            cualquier otro acceso a una referencia "null" eleva "NullPointerException".
+
+    This and Super
+    ===================
+
 
 
 Invocación de construcción
