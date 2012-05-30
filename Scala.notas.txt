@@ -770,6 +770,11 @@ Anonymous Functions
 
         da 14.
 
+Constant Expressions
+====================================
+
+    reading 95
+
 Invocación de construcción
 ==================================
 
