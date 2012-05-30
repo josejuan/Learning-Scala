@@ -711,7 +711,64 @@ Return Expressions
 Throw Expressions
 ========================================
 
-    reading 92
+    Expr1 ::= ‘throw’ Expr
+
+    La expresión "throw e" evalúa "e" que debe ser conforme a "Throwable". No puede ser "null".
+
+Try Expressions
+============================================
+
+    Expr1 ::= ‘try’ ‘{’ Block ‘}’
+                    [‘catch’ ‘{’ CaseClauses ‘}’]
+                    [‘finally’ Expr]
+
+    try { b } catch h finally f
+
+    El uso habitual será:
+
+        try {
+            ...
+        } catch {
+            case e: IllegalArgumentException => println("illegal arg. exception");
+            case e: IllegalStateException    => println("illegal state exception");
+            case e: IOException              => println("IO exception");
+        } finally {
+            ...
+        }
+
+Anonymous Functions
+===========================================
+
+    Expr        ::= (Bindings | [‘implicit’] id | ‘_’) ‘=>’ Expr
+    ResultExpr  ::= (Bindings | ([‘implicit’] id | ‘_’) ‘:’ CompoundType) ‘=>’ Block
+    Bindings    ::= ‘(’ Binding {‘,’ Binding} ‘)’
+    Binding     ::= (id | ‘_’) [‘:’ Type]
+
+    Formas:
+
+            (x1: T1, x2: T2, ..., xn: Tn) => expr
+
+        que es expandida como
+
+            new scala.Functionn[T1,..., Tn, T] {
+                def apply(x1: T1, . . . , xn: Tn): T = e
+            }
+
+        si sólo hay un argumento sin tipo, puede ponerse como
+
+            x => e
+
+        si tiene tipo
+
+            x: T => e
+
+        con el wildcard "_" pasa algo muy curioso, la expresión entera en la que se encuentre
+        pasa a ser una función anónima, además, tantos "_" como aparezcan forman cada uno de los
+        argumentos de la función anónima, por ejemplo
+
+            ((_:Int) + 4 * (_:Int))(2, 3)
+
+        da 14.
 
 Invocación de construcción
 ==================================
