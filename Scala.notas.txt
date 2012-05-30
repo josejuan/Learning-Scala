@@ -542,7 +542,176 @@ Expresiones
     Instance Creation Expressions
     =================================
 
-        reading 81
+        SimpleExpr ::= ‘new’ (ClassTemplate | TemplateBody)
+
+        var x = new c
+        var x = new c { stats }
+        var x = new { stats }        equiv.          var x: S = new AnyRef { stats }
+
+Blocks
+=====================
+
+    BlockExpr ::= ‘{’ Block ‘}’
+    Block ::= {BlockStat semi} [ResultExpr]
+
+    No puede haber dos definiciones solapadas en el mismo bloque (namespace).
+
+    El tipo del bloque es el tipo de la última expresión, el tipo de las intermedias es indefinido.
+
+Prefix, Infix, and Postfix Operations
+==============================================
+
+    PostfixExpr ::= InfixExpr [id [nl]]
+    InfixExpr ::= PrefixExpr | InfixExpr id [nl] InfixExpr
+    PrefixExpr ::= [‘-’ | ‘+’ | ‘!’ | ‘~’] SimpleExpr
+
+    Prefija y postfija son las típicas.
+
+    En infija las reglas son:
+
+        - la precedencia de los operadores infijos viene determinada por EL PRIMER CARACTER del operador:
+
+                (cualquier letra)
+                |
+                ^
+                &
+                < >
+                = !
+                :
+                + -
+                * / %
+                (cualquier otro caracter especial)
+
+        - a la regla anterior hay una excepción, el operador de asignación "=" tiene la menor de todas las
+        precedencias.
+
+        - la asociatividad de un operador viene determinada por SU ULTIMO CARACTER:
+
+            ":", tiene asociatividad a derechas
+
+                e1 op e2                equiv.          {val x = e1; e2.op(x)}
+
+            (otro), asociatividad a izquierda
+
+                e1 op e2                equiv.          e1.op(e2)
+
+    Assignment Operators
+    =============================
+
+        Un operador de asignación es aquel QUE TERMINA EN "=" con la excepción de:
+
+            (empieza con el símbolo "=")
+            <=
+            >=
+            !=
+
+        Por ejemplo
+
+            l += r              equiv.              l = l + r (donde l se evalúa sólo una vez)
+
+Typed Expressions
+=========================
+
+    Expr1 ::= PostfixExpr ‘:’ CompoundType
+
+    La siguiente expresión es válida:
+
+        var z: Double = 2.3
+        z = (4: Int): Double
+
+    Pero esta no
+
+        var z: Double = 2.3
+        z = (4.3: Int): Double      // 4.3 es Double y no puede ser implícitamente convertido a Int
+
+Annotated Expressions
+===============================
+
+    Expr1 ::= PostfixExpr ‘:’ Annotation {Annotation}
+
+    Por ejemplo:
+
+        (ch: @switch) match {
+            ...
+        }
+
+        En este caso: "If present, the compiler will verify that the match has been compiled to a
+                       tableswitch or lookupswitch and issue an error if it instead compiles into
+                       a series of conditional expressions."
+
+Assignments
+=========================
+
+    Expr1 ::= [SimpleExpr ‘.’] id ‘=’ Expr | SimpleExpr1 ArgumentExprs ‘=’ Expr
+
+    La intepretación de "x = e" depende de la definición de "x".
+
+    Si "x" es mutable, entonces el valor de "x" cambia al resultado de evaluar "e".
+
+    Si "x" es una función sin parámetros y esa plantilla contiene un setter "x_=", entonces "x = e",
+        es interpretado como una llamada "x_=(e)".
+
+    La intepretación de "f(args) = e" (o equiv. "f args = e") se interpreta como "f.update(args, e)".
+
+Conditional Expressions
+================================
+
+    Expr1 ::= ‘if’ ‘(’ Expr ‘)’ {nl} Expr [[semi] ‘else’ Expr]
+
+    El tipo del resultado del "if" es el mayor tipo que comparten las partes.
+
+While Loop Expressions
+================================
+
+    Expr1 ::= ‘while’ ‘(’ Expr ’)’ {nl} Expr
+
+Do Loop Expressions
+==============================
+
+    Expr1 ::= ‘do’ Expr [semi] ‘while’ ‘(’ Expr ’)’
+
+For Comprehensions and For Loops
+================================
+
+    Expr1       ::= ‘for’ (‘(’ Enumerators ‘)’ | ‘{’ Enumerators ‘}’) {nl} [‘yield’] Expr
+    Enumerators ::= Generator {semi Enumerator}
+    Enumerator  ::= Generator | Guard | ‘val’ Pattern1 ‘=’ Expr
+    Generator   ::= Pattern1 ‘<-’ Expr [Guard]
+    Guard       ::= ‘if’ PostfixExpr
+
+    Se convierten las estructuras "for" escritas a sus equivalentes usando las funciones
+
+        map
+        flatMap
+        withFilter
+        foreach
+
+    Ejemplo
+
+        for(    a <- A
+                b <- B
+                ...
+                if ...
+        )
+            yield f(a, b, ...)
+
+    Si se usa "yield" los resultados se acumulan y la expresión "for" devuelve una enumeración (.flatMap).
+
+    si no se usa "yield" los resultados no se acumulan y la expresión devuelve Unit (.foreach).
+
+Return Expressions
+=================================
+
+    Expr1 ::= ‘return’ [Expr]
+
+    Debe aparecer en un método o función.
+
+    Si se usa, el método debe tener explicitado el tipo devuelto y "Expr" debe conformar con él.
+
+Throw Expressions
+========================================
+
+    reading 92
 
 Invocación de construcción
 ==================================
