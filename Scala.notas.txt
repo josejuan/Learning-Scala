@@ -773,7 +773,357 @@ Anonymous Functions
 Constant Expressions
 ====================================
 
-    reading 95
+    ¡¿"The definition of “constant expression” depends on the platform"?!
+
+    + un literal de una clase valor, Int, String
+    + una clase construida con "Predef.classOf"
+    + una enumeración subyacente de la plataforma ¡¿ejemplo?!
+    + un array definido como "Array(c1, c2, ...)"
+    + un identificador definido como constante ¡¿?!
+
+    (vaya mierda de explicación el punto "6.24")
+
+Statements
+===================================
+
+    BlockStat ::= Import
+                    | {Annotation} [‘implicit’] Def
+                    | {Annotation} {LocalModifier} TmplDef
+                    | Expr1
+                    |
+    TemplateStat ::= Import
+                    | {Annotation} {Modifier} Def
+                    | {Annotation} {Modifier} Dcl
+                    | Expr
+                    |
+
+    Nada particular, se evalúan como se han escrito.
+
+Implicit Conversions
+================================
+
+    Value Conversions
+    --------------------------
+
+        + "Overloading resolution", varios miembros de una clase pueden ser aplicados.
+        + "Type instantiation", cuando la expresión es de tipo polimórfico, se usa inferencia de tipos.
+        + "Numeric widening", básicamente que si tenemos un Int y se necesita un Double pues se convierte.
+        + "Numeric Literal Narrowing", si se precisa un Byte, Short o Char y tenemos un Int que no haga
+                                        overflow, se convierte.
+        + "Value Discarding", si se necesita el tipo Unit, una expresión "e" se convierte de la siguiente
+                            forma: "{e; ()}".
+        + "View Application", si nada de lo anterior funciona, se intenta convertir "e" mediante vistas de tipos
+                            (se explica más adelante).
+        + "Dynamic Member Selection", si nada de lo anterior funciona y resulta que tenemos algo como "e.x",
+                            y "e" conforma con una clase "scala.Dynamic", entonces, se usan unas reglas que
+                            ¡¿no están en la referencia del lenguaje?!
+
+    Method Conversions
+    --------------------------
+
+        + "Evaluation", un método sin parámetros de tipo => T siempre se convierte al tipo T evaluandolo en
+                        su "caja" (bound).
+        + "Implicit Application", si el método tiene un parámetro implícito, se siguen las reglas que se indican
+                        más adelante.
+        + "Eta Expansion", si no es un constructor y el tipo es (Ts') => T' se hace expansión Eta (más adelante).
+        + "Empty Application", si el método es de tipo ()T se aplica argumento vacío devolviendo e().
+
+    Overloading Resolution
+    --------------------------------
+
+        Hay un follón de reglas que determinan de las alternativas posibles cual se toma primero.
+
+        Básicamente se intenta tomar aquel match que sea más específico, por ejemplo:
+
+            class A extends B {}
+
+            def f(x: B, y: B) = ... // [1]
+            def f(x: A, y: B) = ... // [2]
+
+            val a: A
+            val b: B
+
+        entonces
+
+            f(b, b) encaja con [1] obviamente.
+            f(a, b) encaja con [2] porque A es más específico que B en el primer argumento.
+
+    Local Type Inference
+    -----------------------------
+
+        Básicamente se trata de ver cómo se convierten los tipos a la hora de aplicar la expresión en
+        un contexto, hay tres casos:
+
+        * "Selections", aunque deba inferirse "e" en "e.x" se usa all "e.x" en su contexto para inferir.
+
+        * "Values", se resuelve un sistema de restricciones que no se muy bien de donde vienen.
+
+        * "Methods", otro follón similar al overloading resolution.
+
+    Eta Expansion
+    ------------------------
+
+        Convierte una expresión, "method type" o similar a una función.
+
+        Ni idea, pero debe ser como cuando se hace
+
+            list.map(2 * _)
+
+Implicit Parameters and Views
+================================
+
+    The Implicit Modifier
+    --------------------------
+
+        LocalModifier ::= ‘implicit’
+        ParamClauses ::= {ParamClause} [nl] ‘(’ ‘implicit’ Params ‘)’
+
+    Ejemplo
+    -------------------
+
+        abstract class Monoid[A] extends SemiGroup[A] {
+            def unit: A
+            def add(x: A, y: A): A
+        }
+
+        object Monoids {
+            implicit object stringMonoid extends Monoid[String] {
+                def add(x: String, y: String): String = x.concat(y)
+                def unit: String = ""
+            }
+            implicit object intMonoid extends Monoid[Int] {
+                def add(x: Int, y: Int): Int = x + y
+                def unit: Int = 0
+            }
+        }
+
+    Implicit Parameters
+    ------------------------------
+
+        Se puede indicar un sóla vez y sólo en la última lista de argumentos:
+
+             ... id(...)(...)(implicit ...) = ...
+
+        Con un ejemplo se ve bien
+
+            def sum[A](xs: List[A])(implicit m: Monoid[A]): A =
+                    if(xs.isEmpty) m.unit else m.add(xs.head, sum(xs.tail))
+
+    Views
+    -------------------
+
+        Las vistas son valores implícitos definidos mediante funciones de tipo (S=>T).
+
+        Se aplican en tres situaciones:
+
+            1. si "e" es de tipo T pero no conforma con el esperado, se busca una vista que lo converta.
+
+            2. en "e.m" con "e" de tipo T si "m" no es miembro de "T" se busca una vista que conforme con
+                    T y contenga a "m".
+
+            3. en "e.m(args)" con "e" de tipo T si "m" es miembro de T pero no se aplica "args" se busca
+                    como en dos para poder aplicar "args" en "m".
+
+        Por ejemplo
+
+            implicit def list2ordered[A](x: List[A])
+                                (implicit elem2ordered: A => Ordered[A]): Ordered[List[A]] = ...
+
+            implicit def int2ordered(x: Int): Ordered[Int] = ...
+
+            def <= [B >: A](that: B)(implicit b2ordered: B => Ordered[B]): Boolean .
+
+        si tenemos dos listas de enteros xs e ys (tipo List[Int]), hacer
+
+            xs <= ys
+
+        es legal, siendo expandido a
+
+            list2ordered(xs)(int2ordered).<=
+            (ys)
+            (xs => list2ordered(xs)(int2ordered))
+
+Context Bounds and View Bounds
+============================================
+
+    TypeParam ::= (id | ‘_’) [TypeParamClause] [‘>:’ Type] [‘<:’Type] {‘<%’ Type} {‘:’ Type}
+
+    El método anterior se puede definir como:
+
+        def <= [B >: A <% Ordered[B]](that: B): Boolean
+
+Manifests
+============================
+
+    En algunos casos, los argumentos implicitos pueden ser expandidos a tipos generados automáticamente
+    por scala a saber:
+
+        trait OptManifest[+T]
+        object NoManifest extends OptManifest[Nothing]
+        trait ClassManifest[T] extends OptManifest[T]
+        trait Manifest[T] extends ClassManifest[T]
+
+    los casos de aplicación son un lío, pero básicamente sirven las reglas de inferencia
+
+
+Pattern Matching
+==========================
+
+    Pattern ::= Pattern1 { ‘|’ Pattern1 }
+    Pattern1 ::= varid ‘:’ TypePat
+                    | ‘_’ ‘:’ TypePat
+                    | Pattern2
+    Pattern2 ::= varid [‘@’ Pattern3]
+                    | Pattern3
+    Pattern3 ::= SimplePattern
+                    | SimplePattern {id [nl] SimplePattern}
+    SimplePattern ::= ‘_’
+                    | varid
+                    | Literal
+                    | StableId
+                    | StableId ‘(’ [Patterns] ‘)’
+                    | StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
+                    | ‘(’ [Patterns] ‘)’
+                    | XmlPattern
+    Patterns ::= Pattern {‘,’ Patterns}
+
+    Ejemplos:
+
+        - "ex: IOException" enlaza cada instancia de IOException a "ex"
+        - "Some(x)", enlaza valores desde "Some(v)" enlazando el valor construido por "Some(v)" a "x".
+        - "(x, _)", encaja con duplas, ignorando el segundo elemento y enlazando el primero a "x".
+        - "x :: y :: xs" encaja con listas de al menos 2 elementos, poniendo en "x" el primero, en "y"
+                    el segundo y en "xs" lo que quede.
+        - "1 | 2 | 3" encaja con cualquier entero entre 1 y 3, pero no enlaza nada.
+
+    Variable Patterns
+    --------------------
+
+            puede ser "_" o un "id", en el primer caso el valor encajado es ignorado, en el segundo enlazado.
+
+    Typed Patterns
+    ---------------------
+
+            puede ser "_:T" o "id:T", simplemente fuerza un tipo concreto.
+
+    Pattern Binders
+    -------------------
+
+            Pattern2 ::= varid ‘@’ Pattern3
+
+            Es como un "submarch", da nombre a un match completo que a su vez tiene otro match.
+
+    Literal Patterns
+    ---------------------
+
+            debe encajar con el literal indicado (como un ==)
+
+    Stable Identifier Patterns
+    -----------------------------------
+
+            debe encajar con otra variable que hay por ahí, para ello, el nombre de enmarca entre quotes
+
+            def f(x: Int, y: Int) = x match {
+                case 'y' => println("son iguales")
+                ...
+            }
+
+    Constructor Patterns
+    --------------------------
+
+            SimplePattern ::= StableId ‘(’ [Patterns] ‘)
+
+        StableId es una clase y encaja con la construcción de un objeto cuyos argumentos se indican.
+
+    Tuple Patterns
+    -------------------------
+
+            SimplePattern ::= ‘(’ [Patterns] ‘)’
+
+    Extractor Patterns
+    ----------------------
+
+            SimplePattern ::= StableId ‘(’ [Patterns] ‘)’
+
+        StableId es un objeto que tiene el miembro "unapply" o "unapplySeq" que encajan en el pattern.
+
+    Pattern Sequences
+    ------------------------
+
+            SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
+
+        por ejemplo
+
+            case NumberList(a, b, c @ _*) => ...
+
+    Infix Operation Patterns
+    --------------------------------
+
+            Pattern3 ::= SimplePattern {id [nl] SimplePattern}
+
+        básicamente convierte "p op q" en "op(p, q)".
+
+    Pattern Alternatives
+    ---------------------------
+
+            Pattern ::= Pattern1 { ‘|’ Pattern1 }
+
+        pues eso "p1 | p2 | ..." pero no puede haber variables (sólo wildcards)
+
+    XML Patterns
+    -----------------------
+
+        que se tratan más adelante
+
+    Regular Expression Patterns
+    --------------------------------
+
+        ya no están
+
+    Irrefutable Patterns
+    ------------------------
+
+        ni idea para que vale la definición
+
+
+Type Patterns
+=========================
+
+        TypePat ::= Type
+
+    básicamente lo mismo pero con los tipos de los que se hace match
+
+        case x : List[_] => ...
+
+Type Parameter Inference in Patterns
+=========================================
+
+    otro lío padre -> usar sentido común
+
+Pattern Matching Expressions
+======================================
+
+        Expr ::= PostfixExpr ‘match’ ‘{’ CaseClauses ‘}’
+        CaseClauses ::= CaseClause {CaseClause}
+        CaseClause ::= ‘case’ Pattern [Guard] ‘=>’ Block
+
+    básicamente
+
+        e match { case p1 => b1 . . . case pn => bn }
+
+Pattern Matching Anonymous Functions
+===========================================
+
+        BlockExpr ::= ‘{’ CaseClauses ‘}’
+
+    una función anónima puede ser definida como una secuencia de "cases"
+
+        { case p1 => b1 . . . case pn => bn }
+
+Compilation Units
+=======================
+
+    reading 127
 
 Invocación de construcción
 ==================================
